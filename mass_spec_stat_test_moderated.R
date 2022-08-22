@@ -45,8 +45,8 @@ data <- protein_groups %>%
         select("rownum", "Gene names", contains(test, ignore.case = T),
                contains(control, ignore.case = T))
 
-#Select proteins: sequence coverage > 5 for atleast 2 out of 3 samples in each
-#experimental group
+# Select proteins: sequence coverage > 5 for atleast 2 out of 3 samples in atleast
+# one experimental group
 names_sequence_coverage <- data %>%
         select(rownum, starts_with("Sequence coverage")) %>%
         mutate(across(.cols = -rownum, .fns = ~between(x = .x, left = 0, right = 5))) %>%
@@ -55,11 +55,12 @@ names_sequence_coverage <- data %>%
         mutate(test = sum(across(.cols = contains(test))),
                control = sum(across(.cols = contains(control)))) %>%
         ungroup() %>%
-        filter(test < 2 & control < 2) %>%
+        filter(test < 2 | control < 2) %>%
         select(rownum) %>%
         drop_na()
 
-# select proteins with unique peptide > 1
+# select proteins with unique peptide > 1 in two out of three samples in atleast 
+# one experimental group
 names_unique_peptides <- data %>%
         select(rownum, matches(match = "^Unique")) %>%
         mutate(across(.cols = -rownum, .fns = ~between(x = .x, left = 0,
@@ -69,11 +70,12 @@ names_unique_peptides <- data %>%
         mutate(test = sum(across(.cols = contains(test))),
                control = sum(across(.cols = contains(control)))) %>%
         ungroup() %>%
-        filter(test < 2 & control < 2) %>%
+        filter(test < 2 | control < 2) %>%
         select(rownum) %>%
         drop_na()
 
-#Select proteins with valid values in 2 out of 3 replicates
+# Select proteins with valid values in 2 out of 3 replicates in both experimental
+# groups
 valid_value_names <- data %>%
         select(rownum, matches(match = "^iBAQ")) %>%
         mutate(across(.cols = -rownum, .fns = ~near(x = .x, y = 0)),
@@ -123,16 +125,18 @@ final_result <- final_result %>%
 
 #Determine significance
   final_data <- data_iBAQ %>%
-        right_join(y = final_result, by = c("rownum" = "protein")) %>%
-        mutate(p = -log10(p),
-               p_mod = -log10(p_mod),
-               across(.cols = contains("iBAQ"), .fns = ~log2(x = .x + 1))) %>%
-        rowwise() %>%
-        mutate(logFC = (sum(across(.cols = contains(test))) / rep) -
-                       (sum(across(.cols = contains(control))) / rep)) %>%
-        ungroup() %>%
-        mutate(significant_ord = logFC > 1.5 & p > 1.30103,
-               significant_mod = logFC > 1.5 & p_mod > 1.30103)
+    right_join(y = final_result, by = c("rownum" = "protein")) %>%
+    mutate(p = -log10(p),
+           p_mod = -log10(p_mod),
+           across(.cols = contains("iBAQ"), .fns = ~log2(x = .x + 1))) %>%
+    rowwise() %>%
+    mutate(logFC = (sum(across(contains(test)), na.rm = T) /
+                      sum(!near(across(contains(test)), y = 0))) - 
+             (sum(across(contains(control)), na.rm = T) /
+                sum(!near(across(contains(control)), y = 0)))) %>%
+    ungroup() %>%
+        mutate(significant_ord = (logFC > 1.5 | logFC < -1.5) & p > 1.30103,
+               significant_mod = (logFC > 1.5 | logFC < -1.5) & p_mod > 1.30103)
 
 #Select for mitochondrial proteins
 mitocarta <- read_xls(path = "Human.MitoCarta3.0.xls",
@@ -155,7 +159,8 @@ final_data %>%
              title = str_c(c(test, control), collapse = " v/s ")) +
         geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()
-ggsave(filename = str_c(test, "_v/s_", control, "_moderated_t_test.pdf"))
+ggsave(filename = str_c(test, "_vs_", control, "_moderated_t_test.pdf"))
+
 
 final_data %>%
         ggplot(aes(x = logFC, y = p)) +
@@ -167,8 +172,10 @@ final_data %>%
              title = str_c(c(test, control), collapse = " v/s ")) +
         geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()
-ggsave(filename = str_c(test, "_v/s_", control, "_ordinary_t_test.pdf"))
 
-write_tsv(x = final_data, file = str_c(test, "_v/s_", control, "_final_data.tsv"))
+#print the graph and final_result file
+ggsave(filename = str_c(test, "_vs_", control, "_ordinary_t_test.pdf"))
+write_tsv(x = final_data, file = str_c(test, "_vs_", control, "_final_data.tsv"))
 #--------------------------------------------------------------------------------
+
 
