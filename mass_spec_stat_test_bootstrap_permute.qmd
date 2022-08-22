@@ -1,0 +1,21 @@
+---
+title: "Perfrom statistical analysis between control and test samples by simulating null distribution"
+format:
+        html:
+                self-contained: true
+editor: visual
+---
+
+## Aim of the code
+
+The aim of the code is to calculate the difference in means for each protein detected in the two samples (i.e. test and control). The difference in means is the point estimate and is used to test the null hypothesis **(diff. in means = 0)** using randomization to generate a null distribution and calculating the area under the curve on the right-tail(diff in means \> 0) or area under the curve on the left tail (diff in means \< 0). Finally, the plot is generated between the log~2~(diff in means) and -log~10~(p-value) and significance determined for those proteins with **log~2~(diff in means) \> 1.5 and p-value \< 0.05**.
+
+## Running the code
+
+The code asks the user to input the maxQuant output file of an experiment. It also asks the user to specify the name of bait and prey protein and the number of replicates for bait and prey.
+
+```{r, echo=FALSE}
+test <- readline(prompt = "Enter name of test sample:")
+control <- readline(prompt = "Enter name of control sample: ")
+rep <- readline(prompt = "Number of replicates for test or control: ")
+```

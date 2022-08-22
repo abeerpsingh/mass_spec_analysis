@@ -1,0 +1,13 @@
+Bracket Type=4,,,,,,,,,,,,,,,,,,,,
+Sample Type,File Name,Sample ID,Path,Instrument Method,Process Method,Calibration File,Position,Inj Vol,Level,Sample Wt,Sample Vol,ISTD Amt,Dil Factor,L1 Study,L2 Client,L3 Laboratory,L4 Company,L5 Phone,Comment,Sample Name
+Unknown,blank_00,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,RA1,5,,0,0,0,1,,,,,,,
+Unknown,Ref7681_MO_09_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GE4,5,,0,0,0,1,,,,,,Uqcc1_3,
+Unknown,Ref7681_MO_03_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GD6,5,,0,0,0,1,,,,,,ml45_3,
+Unknown,Ref7681_MO_08_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GE3,5,,0,0,0,1,,,,,,Uqcc1_2,
+Unknown,Ref7681_MO_06_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GE1,5,,0,0,0,1,,,,,,Mrps36_3,
+Unknown,Ref7681_MO_04_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GD7,5,,0,0,0,1,,,,,,Mrps36_1,
+Unknown,Ref7681_MO_02_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GD5,5,,0,0,0,1,,,,,,ml45_2,
+Unknown,Ref7681_MO_07_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GE2,5,,0,0,0,1,,,,,,Uqcc1_1,
+Unknown,Ref7681_MO_01_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GD4,5,,0,0,0,1,,,,,,ml45_1,
+Unknown,Ref7681_MO_05_20220707,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,GD8,5,,0,0,0,1,,,,,,Mrps36_2,
+Unknown,blank_01,1,D:\2022_07\Ignasi\Ref7681_MOtt_20220707,C:\Xcalibur\methods\Ignasi\DDA_High_60K_Notrap_90_Grad50_Aur_300nl_210517,,,RA1,5,,0,0,0,1,,,,,,,
