@@ -3,6 +3,8 @@ library(tidyverse)
 library(infer)
 library(tidymodels)
 library(readxl)
+library(ggrepel)
+
 #Functions-------------------------------------------------------------------------
 estimate_t_test <- function(data, protein = NA){
         data <- data %>%
@@ -52,8 +54,8 @@ data <- protein_groups %>%
         select("rownum", "Gene names", contains(test, ignore.case = T),
                contains(control, ignore.case = T))
 
-#Select proteins: sequence coverage > 5 for atleast 2 out of 3 samples in each
-#experimental group
+# Select proteins: sequence coverage > 5 for atleast 2 out of 3 samples in atleast
+# one experimental group
 names_sequence_coverage <- data %>%
         select(rownum, starts_with("Sequence coverage")) %>%
         mutate(across(.cols = -rownum, .fns = ~between(x = .x, left = 0, right = 5))) %>%
@@ -62,11 +64,12 @@ names_sequence_coverage <- data %>%
         mutate(test = sum(across(.cols = contains(test))),
                control = sum(across(.cols = contains(control)))) %>%
         ungroup() %>%
-        filter(test < 2 & control < 2) %>%
+        filter(test < 2 | control < 2) %>%
         select(rownum) %>%
         drop_na()
 
-# select proteins with unique peptide > 1
+# select proteins with unique peptide > 1 in atleast 2 out of three samples in atleast
+# one experimental group
 names_unique_peptides <- data %>%
         select(rownum, matches(match = "^Unique")) %>%
         mutate(across(.cols = -rownum, .fns = ~between(x = .x, left = 0,
@@ -76,11 +79,12 @@ names_unique_peptides <- data %>%
         mutate(test = sum(across(.cols = contains(test))),
                control = sum(across(.cols = contains(control)))) %>%
         ungroup() %>%
-        filter(test < 2 & control < 2) %>%
+        filter(test < 2 | control < 2) %>%
         select(rownum) %>%
         drop_na()
 
-#Select proteins with valid values in 2 out of 3 replicates
+#Select proteins with valid values in 2 out of 3 replicates in atleast one 
+#experimental group
 valid_value_names <- data %>%
         select(rownum, matches(match = "^iBAQ")) %>%
         mutate(across(.cols = -rownum, .fns = ~near(x = .x, y = 0)),
@@ -89,7 +93,7 @@ valid_value_names <- data %>%
         mutate(test = sum(across(.cols = contains(test))),
                control = sum(across(.cols = contains(control)))) %>%
         ungroup() %>%
-        filter(test < 2 & control < 2) %>%
+        filter(test < 2 | control < 2) %>%
         select(rownum) %>%
         drop_na()
 
@@ -127,8 +131,10 @@ final_result <- names_for_analysis$rownum %>%
         mutate(p_value = -log10(p_value),
                across(.cols = contains("iBAQ"), .fns = ~log2(x = .x + 1))) %>%
          rowwise() %>%
-         mutate(logFC = (sum(across(.cols = contains(test))) / rep) -
-                        (sum(across(.cols = contains(control))) / rep)) %>%
+          mutate(logFC = (sum(across(contains(test)), na.rm = T) /
+                     sum(!near(across(contains(test)), y = 0))) - 
+            (sum(across(contains(control)), na.rm = T) /
+               sum(!near(across(contains(control)), y = 0)))) %>%
          ungroup() %>%
          mutate(significant = logFC > 1.5 & p_value > 1.30103)
 
@@ -139,16 +145,22 @@ mitocarta <- read_xls(path = "Human.MitoCarta3.0.xls",
         select(Symbol, Description, MitoCarta3.0_SubMitoLocalization, MitoCarta3.0_MitoPathways)
 
 final_result <- final_result %>%
-        inner_join(mitocarta, by = c('Gene names' = 'Symbol'))
+        inner_join(mitocarta, by = c('Gene names' = 'Symbol')) %>%
+        rename(gene_names = 'Gene names')
 
-write_tsv(x = final_result, file = "final_result.tsv")
 #Plot graph
 final_result %>%
-        ggplot() +
-        geom_point(aes(x = logFC, y = p_value, color = significant), show.legend = F) +
+        ggplot(aes(x = logFC, y = p_value)) +
+        geom_point(aes(color = significant), show.legend = F) +
         geom_vline(xintercept = 0) +
         geom_vline(xintercept = 1.5, linetype = "dashed") +
         geom_hline(yintercept = 1.30103, linetype = "dashed") +
         labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue"),
              title = str_c(c(test, control), collapse = " v/s ")) +
+        geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()
+
+#print the graph and final_result file
+ggsave(filename = str_c(test, "_vs_", control, "_ordinary_t_test.pdf"))
+write_tsv(x = final_result, file = str_c(test, "_vs_", control, "_final_data.tsv"))
+#--------------------------------------------------------------------------------
