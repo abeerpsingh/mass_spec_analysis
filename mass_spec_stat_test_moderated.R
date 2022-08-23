@@ -2,7 +2,6 @@
 library(tidyverse)
 library(infer)
 library(tidymodels)
-library(readxl)
 library(ggrepel)
 #Functions-------------------------------------------------------------------------
 ord_t_test <- function(data, protein = NA){
@@ -97,24 +96,25 @@ names_for_analysis <- valid_value_names %>%
 data_combined <- right_join(x = data, y = names_for_analysis, by = "rownum")
 data_iBAQ <- data_combined %>%
         select(rownum, contains("iBAQ"), 'Gene names')
+
 data_transposed <- data_combined %>%
         select(rownum, contains("iBAQ")) %>%
         pivot_longer(-rownum) %>%
         pivot_wider(names_from = rownum) %>%
         mutate(name = if_else(str_detect(name, test), true = "test", 
-                              false = "control"))
+                              false = "control")) %>%
+        mutate(across(contains("p"), .fns = ~na_if(x = .x, y = 0)))
 
-#Preprocess data: Imputation and scale
+#Preprocess data: roll imputation(median)
 data_transpose_impute <- data_transposed %>%
         recipe() %>%
-        step_impute_lower(all_numeric()) %>%
-        prep(verbose = T, log_changes = T)
-
-data_preprocessed_for_t_test <- data_transpose_impute[["template"]]
+        step_impute_roll(all_numeric(), window = 3) %>%
+        prep(data_transposed) %>%
+        bake(data_transposed)
 
 # Calculate ordinary t-statistic and the p_value
 final_result <- names_for_analysis$rownum %>%
-        map_dfr(.f = ~ord_t_test(data = data_preprocessed_for_t_test,
+        map_dfr(.f = ~ord_t_test(data = data_transpose_impute,
                                  protein = .x))
 
 #Calculate moderated t-statistic and p_value
@@ -139,8 +139,7 @@ final_result <- final_result %>%
                significant_mod = (logFC > 1.5 | logFC < -1.5) & p_mod > 1.30103)
 
 #Select for mitochondrial proteins
-mitocarta <- read_xls(path = "Human.MitoCarta3.0.xls",
-                      sheet = 2) %>%
+mitocarta <- read_tsv("mitoCarta3.0.tsv") %>%
         as_tibble() %>%
         select(Symbol, Description, MitoCarta3.0_SubMitoLocalization, MitoCarta3.0_MitoPathways)
 
@@ -155,7 +154,7 @@ final_data %>%
         geom_vline(xintercept = 0) +
         geom_vline(xintercept = 1.5, linetype = "dashed") +
         geom_hline(yintercept = 1.30103, linetype = "dashed") +
-        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue"),
+        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue_mod"),
              title = str_c(c(test, control), collapse = " v/s ")) +
         geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()
@@ -168,7 +167,7 @@ final_data %>%
         geom_vline(xintercept = 0) +
         geom_vline(xintercept = 1.5, linetype = "dashed") +
         geom_hline(yintercept = 1.30103, linetype = "dashed") +
-        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue"),
+        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue_ord"),
              title = str_c(c(test, control), collapse = " v/s ")) +
         geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()

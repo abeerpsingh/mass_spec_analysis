@@ -1,5 +1,5 @@
 ---
-title: "Perfrom statistical analysis between control and test samples by simulating null distribution"
+title: "Perfrom statistical analysis between control and test samples by moderated t-test (Bayesian inference)"
 format:
         html:
                 self-contained: true
@@ -15,12 +15,13 @@ The aim of the code is to calculate the difference in means for each protein det
 The code asks the user to input the maxQuant output file of an experiment. It also asks the user to specify the name of bait and prey protein and the number of replicates for bait and prey.
 
 ```{r, echo=TRUE}
-#Import libraries
+## Import libraries
 library(tidyverse)
 library(infer)
 library(tidymodels)
 library(readxl)
 library(ggrepel)
+
 #Functions-------------------------------------------------------------------------
 ord_t_test <- function(data, protein = NA){
         data <- data %>%
@@ -40,15 +41,15 @@ ord_t_test <- function(data, protein = NA){
                diff_mean = diff_mean[["dx"]] , t = t[["dx"]], p = p)
 }
 #--------------------------------------------------------------------------------
+##Import proteingroups data file
+proteingroups_file_path <- "https://raw.githubusercontent.com/abeerpsingh/mass_spec_analysis/bb58999626583f51e65d9f531aca8e3901c7f11b/Sample%20data/proteinGroups.txt"
 
-#Import proteingroups data file
-proteingroups_file_path <- "https://github.com/abeerpsingh/mass_spec_analysis/blob/bb58999626583f51e65d9f531aca8e3901c7f11b/Sample%20data/proteinGroups.txt"
 protein_groups <- read_tsv(file = proteingroups_file_path) %>%
         rownames_to_column(var = "rownum") %>%
         mutate(rownum = str_c("p",rownum, sep = "_"),
                'Gene names' = str_replace(string = .$`Gene names`, pattern = ";", replacement = "|"))
 
-#Remove false positive protein hits
+#| Remove false positive protein hits
 protein_groups <- protein_groups %>%
         filter(is.na(`Only identified by site`) & is.na(Reverse) &
                        is.na(`Potential contaminant`))
@@ -114,24 +115,25 @@ names_for_analysis <- valid_value_names %>%
 data_combined <- right_join(x = data, y = names_for_analysis, by = "rownum")
 data_iBAQ <- data_combined %>%
         select(rownum, contains("iBAQ"), 'Gene names')
+
 data_transposed <- data_combined %>%
         select(rownum, contains("iBAQ")) %>%
         pivot_longer(-rownum) %>%
         pivot_wider(names_from = rownum) %>%
         mutate(name = if_else(str_detect(name, test), true = "test", 
-                              false = "control"))
+                              false = "control")) %>%
+        mutate(across(contains("p"), .fns = ~na_if(x = .x, y = 0)))
 
-#Preprocess data: Imputation and scale
+#Preprocess data: roll imputation(median)
 data_transpose_impute <- data_transposed %>%
         recipe() %>%
-        step_impute_lower(all_numeric()) %>%
-        prep(verbose = T, log_changes = T)
-
-data_preprocessed_for_t_test <- data_transpose_impute[["template"]]
+        step_impute_roll(all_numeric(), window = 3) %>%
+        prep(data_transposed) %>%
+        bake(data_transposed)
 
 # Calculate ordinary t-statistic and the p_value
 final_result <- names_for_analysis$rownum %>%
-        map_dfr(.f = ~ord_t_test(data = data_preprocessed_for_t_test,
+        map_dfr(.f = ~ord_t_test(data = data_transpose_impute,
                                  protein = .x))
 
 #Calculate moderated t-statistic and p_value
@@ -156,8 +158,7 @@ final_result <- final_result %>%
                significant_mod = (logFC > 1.5 | logFC < -1.5) & p_mod > 1.30103)
 
 #Select for mitochondrial proteins
-mitocarta <- read_xls(path = "https://github.com/abeerpsingh/mass_spec_analysis/blob/bb58999626583f51e65d9f531aca8e3901c7f11b/Human.MitoCarta3.0.xls",
-                      sheet = 2) %>%
+mitocarta <- read_tsv("https://raw.githubusercontent.com/abeerpsingh/mass_spec_analysis/main/mitocarta3.0.tsv") %>%
         as_tibble() %>%
         select(Symbol, Description, MitoCarta3.0_SubMitoLocalization, MitoCarta3.0_MitoPathways)
 
@@ -172,12 +173,11 @@ final_data %>%
         geom_vline(xintercept = 0) +
         geom_vline(xintercept = 1.5, linetype = "dashed") +
         geom_hline(yintercept = 1.30103, linetype = "dashed") +
-        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue"),
+        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue_mod"),
              title = str_c(c(test, control), collapse = " v/s ")) +
         geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()
 #ggsave(filename = str_c(test, "_vs_", control, "_moderated_t_test.pdf"))
-
 
 final_data %>%
         ggplot(aes(x = logFC, y = p)) +
@@ -185,7 +185,7 @@ final_data %>%
         geom_vline(xintercept = 0) +
         geom_vline(xintercept = 1.5, linetype = "dashed") +
         geom_hline(yintercept = 1.30103, linetype = "dashed") +
-        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue"),
+        labs(x = bquote(Log[2]*" fold change"), y = bquote(-Log[10]*" pvalue_ord"),
              title = str_c(c(test, control), collapse = " v/s ")) +
         geom_text_repel(aes(label = gene_names), box.padding = 0.5) +
         theme_classic()
